@@ -1,0 +1,37 @@
+{
+  "name": "seshat",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack --hostname 0.0.0.0",
+    "build": "next build --webpack",
+    "start": "next start --hostname 0.0.0.0",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.114.0",
+    "next": "16.4.5",
+    "papaparse": "5.5.3",
+    "react": "19.1.4",
+    "react-dom": "19.1.4",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@tailwindcss/postcss": "4.1.17",
+    "@types/node": "22.19.1",
+    "@types/papaparse": "5.3.16",
+    "@types/react": "19.1.9",
+    "@types/react-dom": "19.1.9",
+    "eslint": "9.39.1",
+    "eslint-config-next": "16.4.5",
+    "prettier": "3.6.2",
+    "tailwindcss": "4.1.17",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  }
+}

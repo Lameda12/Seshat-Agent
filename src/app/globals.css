@@ -1,0 +1,151 @@
+@import "tailwindcss";
+:root {
+  color: #243735;
+  background: #f6f3e9;
+  font-family: Arial, sans-serif;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 1120px;
+  margin: auto;
+  padding: 28px 20px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  border-bottom: 1px solid #ccd5cc;
+  padding-bottom: 20px;
+}
+h1 {
+  font-size: 36px;
+  font-family: Georgia, serif;
+}
+h2 {
+  font-size: 23px;
+  font-family: Georgia, serif;
+  margin-bottom: 16px;
+}
+h3 {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+p {
+  margin: 10px 0;
+}
+.eyebrow {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #446c62;
+}
+.hero {
+  background: #164d43;
+  color: #fffcef;
+  padding: 30px;
+  border-radius: 20px;
+  margin: 24px 0;
+}
+.amount {
+  font-size: 56px;
+  font-family: Georgia, serif;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.card {
+  background: #fffdf7;
+  border: 1px solid #d9ded3;
+  padding: 22px;
+  border-radius: 16px;
+  margin-bottom: 20px;
+}
+button,
+.link {
+  display: inline-block;
+  background: #1b6051;
+  color: white;
+  border-radius: 8px;
+  padding: 10px 15px;
+  margin: 5px 5px 5px 0;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+input,
+select {
+  border: 1px solid #9cafa5;
+  border-radius: 6px;
+  padding: 8px;
+  max-width: 100%;
+  background: #fffef9;
+  color: #243735;
+}
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 9px 0;
+}
+summary {
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 10px 0;
+}
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+}
+table {
+  width: 100%;
+  font-size: 13px;
+}
+td,
+th {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+}
+.scroll {
+  overflow: auto;
+}
+.muted {
+  color: #5c7067;
+  font-size: 13px;
+}
+.error {
+  color: #a12e25;
+}
+nav {
+  margin: 16px 0;
+}
+a {
+  color: #225f51;
+  text-decoration: underline;
+}
+:focus-visible {
+  outline: 3px solid #cc862c;
+  outline-offset: 3px;
+}
+@media (max-width: 650px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .amount {
+    font-size: 44px;
+  }
+  header {
+    align-items: flex-start;
+  }
+  h1 {
+    font-size: 30px;
+  }
+}

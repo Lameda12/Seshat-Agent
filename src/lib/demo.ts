@@ -1,0 +1,53 @@
+import { Budget } from "./engine";
+export const demo: Budget = {
+  currency: "USD",
+  snapshot: { date: "2026-11-07", amount: 80000 },
+  buffer: 15000,
+  limit: 20000,
+  version: 0,
+  goal: { target: 100000, saved: 25000 },
+  plans: [
+    {
+      id: "rent",
+      date: "2026-11-08",
+      amount: 70000,
+      kind: "bill",
+      label: "Rent",
+      certain: true,
+    },
+    {
+      id: "pay",
+      date: "2026-11-09",
+      amount: 50000,
+      kind: "income",
+      label: "Client invoice",
+      certain: true,
+    },
+  ],
+  transactions: [
+    {
+      id: "groceries",
+      date: "2026-11-06",
+      amount: -6500,
+      currency: "USD",
+      merchant: "Demo Market",
+      category: "Food",
+      kind: "purchase",
+      account: "cash",
+      pending: false,
+      source: "synthetic",
+    },
+    {
+      id: "train",
+      date: "2026-11-05",
+      amount: -2400,
+      currency: "USD",
+      merchant: "Demo Rail",
+      category: "Transport",
+      kind: "purchase",
+      account: "card",
+      pending: false,
+      source: "synthetic",
+    },
+  ],
+};
