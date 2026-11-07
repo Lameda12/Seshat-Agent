@@ -17,3 +17,15 @@ it("invalid model prose and unsupported financial claims fall back", async () =>
   expect(answer.fallback).toBe(true);
   expect(answer.result).toHaveProperty("value", 0);
 });
+it("requires an unambiguous amount and budget currency", async () => {
+  const { purchaseAmount } = await import("../src/lib/tools");
+  expect(purchaseAmount("spend $12.34 before payday", "USD")).toBe(1234);
+  for (const question of [
+    "spend $1,000",
+    "spend $1 000",
+    "spend $12.345",
+    "spend $300 or $400",
+  ])
+    expect(purchaseAmount(question, "USD")).toBeNull();
+  expect(purchaseAmount("spend $300", "KZT")).toBeNull();
+});

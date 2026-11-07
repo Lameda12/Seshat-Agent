@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { saveBudget, proposeLimit, approveLimit } from "./account/actions";
-import { budgetSchema } from "../lib/engine";
+import { validatedBudget } from "../lib/engine";
 import { demo } from "../lib/demo";
 import {
   Budget,
@@ -13,7 +13,7 @@ import {
   transaction,
 } from "../lib/engine";
 import { preview, fileId, mergeImport, Mapping } from "../lib/import";
-import { approve, Proposal, runTool } from "../lib/tools";
+import { approve, Proposal, runTool, purchaseAmount } from "../lib/tools";
 const labels = {
   en: [
     "Your money, clearly.",
@@ -95,7 +95,7 @@ export default function Home({
           Array.isArray(state.b.transactions)
         ) {
           state.b.transactions.forEach((t: unknown) => transaction.parse(t));
-          setB(budgetSchema.parse(state.b));
+          setB(validatedBudget.parse(state.b));
           setHidden(state.hidden ?? {});
           setSeen(state.seen ?? []);
           setAudit(state.audit ?? []);
@@ -136,38 +136,53 @@ export default function Home({
     </details>
   );
   function ask() {
-    const q = question.toLowerCase();
-    const name = /why|more|срав|неге/.test(q)
-      ? "comparison"
-      : /300|spend.*before|purchase/.test(q)
-        ? "purchase"
-        : /goal/.test(q)
-          ? "goal"
-          : /bill/.test(q)
-            ? "bills"
-            : /transaction/.test(q)
-              ? "transactions"
-              : /spent|spending/.test(q)
-                ? "spending"
-                : "forecast";
-    setAnswer({
-      label: real
-        ? "Calculated summary · no model call"
-        : "Demo summary · deterministic calculation, no model call",
-      responseLanguage: lang,
-      note:
-        name === "comparison"
-          ? "Comparable coverage is not established; Seshat cannot explain a cause."
-          : name === "purchase"
-            ? "Scenario reserves $300 immediately; this is not an approved purchase."
-            : "Evidence from synthetic records only.",
-      result: runTool(b, {
-        name,
-        start: end.slice(0, 7) + "-01",
-        end,
-        amount: name === "purchase" ? 30000 : undefined,
-      }),
-    });
+    try {
+      const amount = purchaseAmount(question, b.currency);
+      if (/spend.*before|purchase|[$₽₸]/i.test(question) && amount === null) {
+        setAnswer({
+          note: "Specify one purchase amount in your budget currency, for example: spend 300 before payday.",
+        });
+        return;
+      }
+      const q = question.toLowerCase();
+      const name = /why|more|срав|неге/.test(q)
+        ? "comparison"
+        : amount !== null
+          ? "purchase"
+          : /goal/.test(q)
+            ? "goal"
+            : /bill/.test(q)
+              ? "bills"
+              : /transaction/.test(q)
+                ? "transactions"
+                : /spent|spending/.test(q)
+                  ? "spending"
+                  : "forecast";
+      setAnswer({
+        label: real
+          ? "Calculated summary · no model call"
+          : "Demo summary · deterministic calculation, no model call",
+        responseLanguage: lang,
+        note:
+          name === "comparison"
+            ? "Comparable coverage is not established; Seshat cannot explain a cause."
+            : name === "purchase"
+              ? `Scenario reserves ${format(amount)} immediately; this is not an approved purchase.`
+              : real
+                ? "Evidence from your recorded budget only."
+                : "Evidence from synthetic records only.",
+        result: runTool(b, {
+          name,
+          start: end.slice(0, 7) + "-01",
+          end,
+          amount: name === "purchase" ? (amount ?? undefined) : undefined,
+        }),
+      });
+    } catch {
+      setError(
+        "Choose an ordered question date range of at most 367 days and one explicit purchase amount.",
+      );
+    }
   }
   async function confirmImport() {
     try {

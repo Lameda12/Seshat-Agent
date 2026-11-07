@@ -1,0 +1,46 @@
+# Security review — November 7, 2026
+
+This is a source review plus local adversarial/regression testing, not an independent penetration test or certification. The application is not claimed to be injection-proof or ready for production financial data. Live Supabase Auth, live model behavior, infrastructure controls and provider retention were not verified because no credentials or authorized remote test users are available.
+
+## Findings and remediation
+
+| Severity | Finding before this review | Remediation |
+| --- | --- | --- |
+| High | The generic save RPC could change a spending limit without an approval audit; an owner could also update the budget directly. RLS ownership alone did not enforce the approval invariant. | Migration `202611070002_security.sql` removes direct budget UPDATE privileges, rejects limit changes in the save RPC, enforces a consistent state envelope, and reserves limit mutation for the locked, audited approval function. Cross-user, owner-bypass, generic-RPC bypass, successful save, stale save, audit and idempotency paths are exercised in PostgreSQL. |
+| High (conditional tooling exposure) | The full dependency audit found critical development-tool advisories in the old Vitest/tinypool tree. The previous production-only audit did not include them. | Upgraded to exact-pinned Vitest 5.1.0. A narrow minimatch 11.0.5 override replaces the vulnerable transitive lint dependency; lint/typecheck/tests validate compatibility. Full audit now reports zero advisories. This does not prove the absence of vulnerabilities. |
+| Medium | Paid model requests had no durable per-user quota; client Content-Length alone did not bound body size. | Atomic database quotas of 5 calls per minute and 100 per rolling day per authenticated user. Quota writes are inaccessible to clients. JSON input is limited by actual bytes, media type and a read deadline; model responses and API results are bounded. The API fails closed if the quota function is unavailable. |
+| Medium | A structurally valid model response could invent a purchase amount or choose an unrequested date. Unknown nested tool fields were silently stripped. | Strict nested schemas reject ownership, SQL, extra properties, write tools, invalid/range-excessive dates and missing purchase amounts. Selected dates must be explicit in the question or server baseline; purchase amounts must match an unambiguous amount and currency parsed independently from the question. Unsupported selections fall back to deterministic evidence. Tool selections are disclosed. |
+| Medium | No explicit route-handler origin protection or script-execution CSP was present. | The paid-model endpoint requires the exact configured browser origin and rejects cross-site requests and non-JSON media. A fresh nonce-based CSP, dynamic rendering, private/no-store responses, framing denial, nosniff and referrer/permissions policies provide additional browser defenses. Production CSP has no unsafe-eval or unsafe-inline script allowance. Inline styling remains allowed for the current UI. |
+| Medium | Supabase SSR defaults allowed JavaScript-readable session cookies. | Server-only auth uses HttpOnly, SameSite=Lax cookies, Secure on HTTPS; non-loopback HTTP APP_ORIGIN values are rejected. Callback redirects use the configured origin. Device sign-out is available. Cookie option construction is tested; actual live Supabase cookie/session behavior remains unverified. |
+| Medium (financial integrity) | Realized expected income could be counted again as a plan. The demo also used a fixed $300 amount for other purchase questions. | Explicit matching now handles positive income and negative obligations without reusing a payment. Purchase parsing refuses ambiguous/grouped numbers or another currency. Scenario evidence separates the recorded snapshot from the hypothetical reservation. Added independently worked regression tests. |
+| Medium (data completeness) | Export limits could silently truncate rows at the project's PostgREST cap. | Count-aware pagination, explicit owner/budget filters, stable ordering, completeness checks and bounded downloads. Large tables support `?table=records&offset=0` and a returned `nextOffset`. Count changes require retry. This is not a transactionally consistent backup across concurrent edits. |
+| Low / defense in depth | Unbounded source/ID fields and duplicate record IDs could undermine resource bounds or matching. | Bounded strings, unique IDs, bounded alert state and a 2 MB validated budget envelope at application boundaries; corresponding database envelope/amount bounds. Invalid data fails closed rather than producing a financial answer. |
+
+## Prompt-injection trust boundaries
+
+- The model receives only the user's question and server-owned baseline dates. Merchant names, CSV source values, database rows, balances, secrets and tool results are not sent to the model by this implementation.
+- Model output is untrusted data. It selects one of seven allowlisted read tools. There is no arbitrary SQL, URL fetching, code execution, notification or mutation capability available to it. The provider destination is fixed; redirects are refused; calls have a timeout and no automatic retry loop.
+- A model cannot supply an owner ID. Reads derive identity from `getUser()` and explicit budget scoping, with RLS as a separate database boundary. Approvals are separate authenticated operations; a model selection cannot invoke them.
+- Financial values come from the exact-money engine. Arbitrary model prose is never rendered as financial claims. Strict schema failures, unsupported parameters and provider failures return deterministic evidence.
+- CSV/merchant text is rendered through React escaping, not HTML execution. Desktop/mobile tests import markup containing an event handler and instructions to approve budgets, then verify inert rendering and no browser errors. Tests also submit malicious model selections and verify no budget mutation.
+- A model may still select a permitted read tool that does not match the user's intent. Neither prompts nor tests prove universal resistance to adversarial inputs. Users must inspect the disclosed tool, dates, evidence and assumptions. The independently parsed amount supports explicit currency symbols and English purchase verbs; unsupported wording fails closed.
+
+## Retention and privacy
+
+- Only synthetic demo fixtures use localStorage. Private budget state is kept in authenticated PostgreSQL and browser memory while the workspace is open. Responses are no-store, but that does not guarantee erasure from browser memory, downloaded files or operating-system artifacts.
+- Users can export their own budget and delete budget rows, cascading records, proposals, audit and alerts. Deleting a budget does **not** delete the Supabase Auth identity, the per-account model usage quota, provider backups or previously downloaded exports. There is no automatic financial-data expiry policy in this MVP.
+- A configured model provider receives the question, which itself may contain personal data typed by the user. Provider-side retention, regional storage, training controls and zero-retention eligibility depend on the operator's contract/settings and were not verified here.
+- No real financial data or credential values were used in tests or logged during this review. The code adds no body/model-response logging. Hosting, reverse-proxy, authentication-email and provider logs/backups are external controls and need separate configuration.
+
+## Verification and release gates
+
+Run `npm run lint`, `npm run typecheck`, `npm test`, `bash scripts/test-db.sh`, `npm run build`, `npm run test:e2e`, and `npm audit`. The final local run is recorded in VERIFICATION.md. Database checks use the actual migrations in disposable PostgreSQL with two claim-backed identities; they do not establish live Supabase session isolation. Provider tests establish application-side rejection behavior, not live model reliability.
+
+Before real financial data:
+
+1. Apply **both** versioned migrations in order and run the same policy/approval tests in a dedicated Supabase test project with real authenticated users. Existing malformed state may cause the new consistency constraint to reject migration; inspect and repair deliberately, without dropping the check.
+2. Verify live sign-in/refresh/sign-out, actual cookie flags, CSRF, cross-user REST/RPC access, export/delete, save concurrency and the authenticated scheduler path. Configure the exact HTTPS APP_ORIGIN; align auth redirects and use a random scheduler secret of at least 32 characters.
+3. Set provider-wide spending limits and restrict signup/access as appropriate. Per-user quotas do not prevent aggregate billing abuse through many accounts. Set infrastructure request/concurrency limits, HTTPS, secret rotation and restricted database/network access. The scheduler's service role is a privileged trust boundary.
+4. Configure session lifetime, retention/deletion procedures, backups and provider privacy settings. No global retention or infrastructure hardening claim can be made from source code alone.
+
+No deployment, live migration, push to main or external penetration testing was performed.

@@ -8,5 +8,5 @@ for attempt in $(seq 1 30); do
  if docker --host=unix:///var/run/docker.sock exec "$name" pg_isready -U postgres >/dev/null 2>&1; then break; fi
  sleep 1
 done
-docker --host=unix:///var/run/docker.sock cp supabase/migrations/202611070001_budget.sql "$name":/migration.sql
+docker --host=unix:///var/run/docker.sock cp supabase/migrations "$name":/migrations
 docker --host=unix:///var/run/docker.sock exec -i "$name" psql -U postgres -v ON_ERROR_STOP=1 < tests/policies.sql

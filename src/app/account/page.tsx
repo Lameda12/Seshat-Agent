@@ -1,8 +1,14 @@
 import Link from "next/link";
-import { budgetSchema } from "../../lib/engine";
+import { validatedBudget } from "../../lib/engine";
 import Workspace from "../workspace";
 import { authenticated } from "../../lib/server";
-import { signIn, confirmProposal, createBudget, deleteBudget } from "./actions";
+import {
+  signIn,
+  confirmProposal,
+  createBudget,
+  deleteBudget,
+  signOut,
+} from "./actions";
 export const dynamic = "force-dynamic";
 export default async function Account() {
   if (
@@ -37,8 +43,11 @@ export default async function Account() {
       </main>
     );
   }
-  const { db } = session;
-  const { data: budgets, error } = await db.from("budgets").select("*");
+  const { db, user } = session;
+  const { data: budgets, error } = await db
+    .from("budgets")
+    .select("*")
+    .eq("owner", user.id);
   if (error)
     return (
       <main>
@@ -49,18 +58,26 @@ export default async function Account() {
   const { data: proposals } = await db
     .from("proposals")
     .select("*")
+    .in(
+      "budget_id",
+      (budgets ?? []).map((b) => b.id),
+    )
     .is("approved_at", null)
     .limit(20);
   const { data: audit } = await db
     .from("audit")
     .select("proposal_id,before_limit,after_limit")
+    .in(
+      "budget_id",
+      (budgets ?? []).map((b) => b.id),
+    )
     .order("created_at", { ascending: true })
     .limit(1000);
   if (budgets?.[0]?.state)
     return (
       <>
         <Workspace
-          initial={budgetSchema.parse(budgets[0].state)}
+          initial={validatedBudget.parse(budgets[0].state)}
           initialAudit={(audit ?? []).map(
             (a) =>
               `Confirmed ${a.proposal_id}: ${a.before_limit} → ${a.after_limit}`,
@@ -68,6 +85,9 @@ export default async function Account() {
           real
         />
         <main>
+          <form action={signOut}>
+            <button>Sign out of this device</button>
+          </form>
           <a href="/api/export">Export private budget</a>
           <form action={deleteBudget}>
             <label>

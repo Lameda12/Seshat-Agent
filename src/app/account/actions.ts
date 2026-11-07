@@ -1,10 +1,11 @@
 "use server";
+import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authenticated, database } from "../../lib/server";
 export async function signIn(data: FormData) {
-  const email = z.string().email().parse(data.get("email"));
+  const email = z.string().max(320).email().parse(data.get("email"));
   const origin = process.env.APP_ORIGIN;
   if (!origin) throw Error("APP_ORIGIN is required");
   const db = await database();
@@ -57,8 +58,8 @@ export async function exportBudget() {
   return data;
 }
 export async function saveBudget(input: unknown, expectedVersion: number) {
-  const { budgetSchema } = await import("../../lib/engine");
-  const state = budgetSchema.parse(input);
+  const { validatedBudget } = await import("../../lib/engine");
+  const state = validatedBudget.parse(input);
   const { db } = await authenticated();
   const { error } = await db.rpc("save_budget", {
     new_state: state,
@@ -96,4 +97,11 @@ export async function approveLimit(id: string) {
   });
   if (error) throw Error("Stale or unavailable proposal; reload and review");
   revalidatePath("/account");
+}
+
+export async function signOut() {
+  const { db } = await authenticated();
+  const { error } = await db.auth.signOut({ scope: "local" });
+  if (error) throw Error("Sign-out failed");
+  redirect("/");
 }

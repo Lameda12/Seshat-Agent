@@ -34,11 +34,11 @@ CSV UTF-8 with headers, ISO `YYYY-MM-DD`, negative debit / positive credit, one 
 
 ## Configured real accounts (live integration unverified)
 
-1. Use an existing Supabase project; this task does not provision paid resources. Apply `supabase/migrations/202611070001_budget.sql` via your normal reviewed migration workflow.
+1. Use an existing Supabase project; this task does not provision paid resources. Apply all SQL files under `supabase/migrations/` in filename order via your normal reviewed migration workflow.
 2. Copy `.env.example` to ignored `.env.local`. Set `NEXT_PUBLIC_SUPABASE_URL`, its public anon key and `APP_ORIGIN`. Never put service-role or model keys in public variables. Configure Supabase email sign-in and allowed redirect `/auth/confirm` for that origin.
 3. Restart and visit `/account`, sign in, choose one currency and create a private budget. Enter a snapshot before using forecasts. Use **Save private budget** after edits; concurrent saves use a version comparison and reject stale state. Reload after concurrent edits. Real account state never enters the demo local-storage adapter.
 4. Optional server-only `MODEL_API_KEY` and `MODEL_ID` enable **Ask configured model**. Allow `api.openai.com` plus your exact Supabase project hostname in environment network settings. No keys are currently provided here. The model sees the question only and returns a bounded read-tool selection. It cannot write SQL, approve, or author financial narrative. Values and evidence come from the engine. Invalid provider output/timeouts fall back to deterministic evidence. No retries or agent loops.
-5. Optional `SCHEDULER_SECRET` and server-only `SUPABASE_SERVICE_ROLE_KEY` enable the job. Keep these secure; the service role is used only inside the protected job handler. Invoke from a trusted scheduler:
+5. Optional `SCHEDULER_SECRET` (random, at least 32 characters) and server-only `SUPABASE_SERVICE_ROLE_KEY` enable the job. Keep these secure; the service role is used only inside the protected job handler. Invoke from a trusted scheduler:
 
 ```sh
 curl --fail -X POST -H "Authorization: Bearer $SCHEDULER_SECRET" "$APP_ORIGIN/api/job"
@@ -68,3 +68,7 @@ The Docker database check creates a disposable PostgreSQL 17.6 instance and tear
 This is a reviewable first MVP slice, not a complete production finance product. English/Russian/Kazakh navigation headings are implemented; full form/error translation and independent language-quality review remain incomplete. Category breakdown and an overall spending-limit proposal are implemented; per-category configurable limits are not. Comparison refuses unsupported causal claims. The model selects one tool rather than a multistep conversational agent. Demo questions recognize a small set of intents and the documented $300 scenario. Scheduled-alert dismiss/snooze synchronization and historical data-coverage tracking need expansion. External Supabase/model workflows must be verified before using real financial data.
 
 See `VERIFICATION.md` for run outcomes and `PR_DESCRIPTION.md` for the review summary. No deployment, merge or push to main is part of this task. Use the existing isolated task checkout; do not create a worktree for routine development.
+
+## Security hardening
+
+Read `SECURITY_REVIEW.md` before configured use. Model requests require the exact HTTPS `APP_ORIGIN` (loopback HTTP is permitted for development), bounded JSON, and authenticated per-user quotas. Session cookies are HttpOnly. The second migration closes direct/generic-save limit-change bypasses; do not omit it. CSV instructions are data, not authority. CSP uses per-response script nonces, so HTML is dynamically rendered and not cached. Full dependency audits include development tools. Large exports support `GET /api/export?table=records&offset=0`; follow the returned `nextOffset`. Exports detect incomplete pages and changing counts, but are not transactionally consistent backups.

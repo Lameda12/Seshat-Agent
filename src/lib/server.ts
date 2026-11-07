@@ -1,4 +1,5 @@
 import "server-only";
+import { authCookieOptions } from "./security";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 export async function database() {
@@ -6,7 +7,10 @@ export async function database() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
     key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) throw Error("Supabase is not configured");
+  const origin = process.env.APP_ORIGIN;
+  if (!origin) throw Error("APP_ORIGIN is required");
   return createServerClient(url, key, {
+    cookieOptions: authCookieOptions(origin),
     cookies: {
       getAll: () => jar.getAll(),
       setAll: (values) => {

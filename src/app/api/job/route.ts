@@ -1,12 +1,13 @@
 import { timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { budgetSchema, insights } from "../../../lib/engine";
+import { validatedBudget, insights } from "../../../lib/engine";
 export async function POST(req: Request) {
   const expected = process.env.SCHEDULER_SECRET;
   const received = req.headers.get("authorization") ?? "";
   const wanted = `Bearer ${expected}`;
   if (
     !expected ||
+    expected.length < 32 ||
     Buffer.byteLength(received) !== Buffer.byteLength(wanted) ||
     !timingSafeEqual(Buffer.from(received), Buffer.from(wanted))
   )
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
   let count = 0;
   const end = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
   for (const row of data) {
-    const parsed = budgetSchema.safeParse(row.state);
+    const parsed = validatedBudget.safeParse(row.state);
     if (!parsed.success) continue;
     for (const i of insights(parsed.data, end)) {
       const { error } = await db

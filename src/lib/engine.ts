@@ -13,7 +13,7 @@ export const minor = z
   .min(-100000000000)
   .max(100000000000);
 export const transaction = z.object({
-  id: z.string(),
+  id: z.string().min(1).max(128),
   date,
   amount: minor,
   currency: z.string().length(3),
@@ -22,7 +22,7 @@ export const transaction = z.object({
   kind: z.enum(["purchase", "refund", "income", "transfer", "card_payment"]),
   account: z.enum(["cash", "card"]),
   pending: z.boolean().default(false),
-  source: z.string(),
+  source: z.string().max(16000),
 });
 export type Transaction = z.infer<typeof transaction>;
 export type Plan = {
@@ -140,10 +140,12 @@ export function forecast(
         t.id === p.paidBy &&
         !usedPayments.has(t.id) &&
         !t.pending &&
-        t.kind !== "transfer" &&
+        (p.kind === "income"
+          ? t.kind === "income"
+          : t.kind === "purchase" || t.kind === "card_payment") &&
         t.account === "cash" &&
         t.currency === b.currency &&
-        t.amount === -p.amount &&
+        t.amount === (p.kind === "bill" ? -p.amount : p.amount) &&
         t.date <= end,
     );
     if (payment) {
@@ -238,13 +240,13 @@ export const budgetSchema = z
     plans: z
       .array(
         z.object({
-          id: z.string(),
+          id: z.string().min(1).max(128),
           date,
           amount: minor.positive(),
           kind: z.enum(["bill", "income"]),
           label: z.string().max(100),
           certain: z.boolean(),
-          paidBy: z.string().optional(),
+          paidBy: z.string().min(1).max(128).optional(),
         }),
       )
       .max(1000),
@@ -256,3 +258,15 @@ export const budgetSchema = z
     (b) => b.transactions.every((t) => t.currency === b.currency),
     "Mixed currency budget",
   );
+
+// Duplicate IDs could otherwise allow one recorded payment to discharge multiple obligations.
+export const validatedBudget = budgetSchema.superRefine((b, ctx) => {
+  for (const rows of [b.transactions, b.plans]) {
+    if (new Set(rows.map((r) => r.id)).size !== rows.length)
+      ctx.addIssue({ code: "custom", message: "Duplicate record IDs" });
+  }
+  if (Object.keys(b.alertStates ?? {}).length > 1000)
+    ctx.addIssue({ code: "custom", message: "Too many alert states" });
+  if (new TextEncoder().encode(JSON.stringify(b)).length > 2000000)
+    ctx.addIssue({ code: "custom", message: "Budget exceeds 2 MB" });
+});

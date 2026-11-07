@@ -167,3 +167,41 @@ it("one payment cannot discharge two bills", () => {
   };
   expect(forecast(b, "2026-11-14").lowest).toBe(-60000);
 });
+it("realized income discharges its plan instead of being counted twice", () => {
+  const b = {
+    ...demo,
+    snapshot: { date: "2026-11-07", amount: 10000 },
+    buffer: 0,
+    transactions: [
+      {
+        ...demo.transactions[0],
+        id: "invoice",
+        date: "2026-11-08",
+        kind: "income" as const,
+        amount: 10000,
+      },
+    ],
+    plans: [
+      {
+        id: "planned-pay",
+        date: "2026-11-08",
+        kind: "income" as const,
+        amount: 10000,
+        label: "invoice",
+        certain: true,
+        paidBy: "invoice",
+      },
+      {
+        id: "bill",
+        date: "2026-11-09",
+        kind: "bill" as const,
+        amount: 25000,
+        label: "bill",
+        certain: true,
+      },
+    ],
+  };
+  const result = forecast(b, "2026-11-14");
+  expect(result.lowest).toBe(-5000);
+  expect(result.shortfall).toBe(5000);
+});
